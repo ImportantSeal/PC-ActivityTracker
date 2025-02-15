@@ -15,6 +15,7 @@ import java.net.DatagramSocket
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.*
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
 import java.net.InetSocketAddress
@@ -35,6 +36,7 @@ class MainActivity : ComponentActivity() {
 fun MainScreen() {
     var pcIp by remember { mutableStateOf("Searching for PC...") }
     var pcStatus by remember { mutableStateOf("Press Fetch to check status") }
+    var eventsText by remember { mutableStateOf("Press Fetch events to load events") }
     val coroutineScope = rememberCoroutineScope()
 
     // start listening for UDP broadcasts when the app launches
@@ -60,6 +62,16 @@ fun MainScreen() {
         }) {
             Text("Fetch PC Status")
         }
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(onClick = {
+            coroutineScope.launch {
+                eventsText = fetchPcEvents(pcIp)
+            }
+        }) {
+            Text("Fetch Events")
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(eventsText)
     }
 }
 
@@ -108,6 +120,40 @@ suspend fun fetchPcStatus(ip: String): String {
             if (response.isSuccessful) {
                 val json = JSONObject(response.body?.string() ?: "{}")
                 "PC Status: ${json.getString("status")} at ${json.getString("timestamp")}"
+            } else {
+                "HTTP Error: ${response.code}"
+            }
+        } catch (e: IOException) {
+            "Connection failed: ${e.message}"
+        }
+    }
+}
+
+suspend fun fetchPcEvents(ip: String): String {
+    return withContext(Dispatchers.IO) {
+        if (ip.startsWith("No PC detected") || ip.isBlank()) {
+            return@withContext "Invalid IP address: $ip"
+        }
+
+        val client = OkHttpClient()
+        val request = Request.Builder()
+            .url("http://$ip:5000/events")
+            .build()
+
+        try {
+            val response = client.newCall(request).execute()
+            if (response.isSuccessful) {
+                val jsonStr = response.body?.string() ?: "[]"
+                val jsonArray = JSONArray(jsonStr)
+                if (jsonArray.length() == 0) {
+                    return@withContext "No events available"
+                }
+                val sb = StringBuilder()
+                for (i in 0 until jsonArray.length()) {
+                    val event = jsonArray.getJSONObject(i)
+                    sb.append("Process: ${event.getString("process")} - Action: ${event.getString("action")} at ${event.getString("timestamp")}\n")
+                }
+                sb.toString()
             } else {
                 "HTTP Error: ${response.code}"
             }
