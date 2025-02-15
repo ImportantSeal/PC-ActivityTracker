@@ -4,6 +4,8 @@ from flask import Flask, jsonify
 import datetime
 import psutil 
 import time
+import win32gui
+import win32process
 
 app = Flask(__name__)
 
@@ -50,6 +52,18 @@ def broadcast_ip():
 # for following processes
 prev_processes = set()
 
+def get_active_window_info():
+    hwnd = win32gui.GetForegroundWindow()
+    window_title = win32gui.GetWindowText(hwnd)
+    # searching PID from active window
+    _, pid = win32process.GetWindowThreadProcessId(hwnd)
+    try:
+        proc = psutil.Process(pid)
+        process_name = proc.name()
+    except Exception:
+        process_name= "Unknown"
+    return process_name, window_title
+
 # background thread that followes opening and closing apps
 def monitor_applications():
     global prev_processes, events
@@ -72,19 +86,35 @@ def monitor_applications():
             events.append(event)
             print("Application opened", event)
         for p in closed_processes:
-            event = {"process": p, "action": "opened", "timestamp": str(datetime.datetime.now())}
+            event = {"process": p, "action": "closed", "timestamp": str(datetime.datetime.now())}
             events.append(event)
             print("Application closed", event)
 
         prev_processes = current_processes
         time.sleep(5)
 
+def monitor_active_window():
+    last_active = None
+    while True:
+        current_active = get_active_window_info()
+        if current_active != last_active:
+            last_active = current_active
+            event = {
+                "process": current_active[0],
+                "window": current_active[1],
+                "action": "active",
+                "timestamp": str(datetime.datetime.now())
+            }
+            events.append(event)
+            print("Active window changed:", event)
+        time.sleep(5)  
+
 # start UDP broadcaster in a separate thread
 broadcast_thread = threading.Thread(target=broadcast_ip, daemon=True)
 broadcast_thread.start()
 
-monitor_thred = threading.Thread(target=monitor_applications, daemon=True)
-monitor_thred.start()
+active_window_thread = threading.Thread(target=monitor_active_window, daemon=True)
+active_window_thread.start()
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
