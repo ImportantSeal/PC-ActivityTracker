@@ -11,6 +11,8 @@ import win32con
 import base64
 import io
 from PIL import Image
+from PIL import ImageFilter
+from PIL import ImageEnhance
 
 app = Flask(__name__)
 
@@ -86,10 +88,30 @@ def convert_hicon_to_base64(hicon):
     bmpinfo = hbmp.GetInfo()
     bmpstr = hbmp.GetBitmapBits(True)
     img = Image.frombuffer('RGB', (bmpinfo['bmWidth'], bmpinfo['bmHeight']), bmpstr, 'raw', 'BGRX', 0, 1)
+    
+    # Tee kuvasta RGBA ja muuta musta väri läpinäkyväksi
+    img = img.convert("RGBA")
+    data = img.getdata()
+    new_data = []
+    for item in data:
+        if item[:3] == (0, 0, 0):  # Jos pikseli on musta
+            new_data.append((0, 0, 0, 0))  # Asetetaan läpinäkyväksi
+        else:
+            new_data.append(item)
+    img.putdata(new_data)
+    
+    # Pehmennetään reunoja ja poistetaan mustan jäämät
+    img = img.filter(ImageFilter.GaussianBlur(1))
+    enhancer = ImageEnhance.Brightness(img)
+    img = enhancer.enhance(1.2)  # Kirkastetaan hieman estämään mustien reunojen jäämistä
+    
     output = io.BytesIO()
     img.save(output, format="PNG")
     png_data = output.getvalue()
     return base64.b64encode(png_data).decode("utf-8")
+
+
+
 
 def get_icon_for_process(process_exe: str) -> str:
     try:
@@ -137,6 +159,8 @@ def monitor_active_window():
             print("New session started:", active_session)
             last_hwnd = hwnd
         time.sleep(1)
+
+        
 
 if __name__ == '__main__':
     broadcast_thread = threading.Thread(target=broadcast_ip, daemon=True)
