@@ -219,9 +219,11 @@ suspend fun fetchPcStatus(ip: String): ActiveSession = withContext(Dispatchers.I
                 val cs = json.getJSONObject("current_session")
                 val appName = cs.optString("process", "Unknown App")
                 val windowName = cs.optString("window", "Unknown Window")
-                val startTime = cs.optString("start_time", "Unknown Start").split(" ").getOrElse(1) { "??:??" }.substring(0, 5)
+                val startTime = cs.optString("start_time", "Unknown Start")
+                    .split("T").getOrElse(1) { "??:??" }
+                    .substring(0, 5)
                 iconUrl = cs.optString("icon_url", "")
-                statusText += "\nCurrently Active: $appName - $windowName (since $startTime)"
+                statusText += "\nCurrently Active: $windowName since $startTime"
             }
             return@withContext ActiveSession(statusText, iconUrl)
         } else {
@@ -251,16 +253,20 @@ suspend fun fetchSessionList(ip: String): List<Session> = withContext(Dispatcher
             val session = jsonArray.getJSONObject(i)
             val appName = session.optString("process", "Unknown App")
             val windowName = session.optString("window", "Unknown Window")
-            val startTime = session.optString("start_time", "Unknown Start").split(" ").getOrElse(1) { "??:??" }.substring(0, 5)
+            val startTime = session.optString("start_time", "Unknown Start")
+                .split("T").getOrElse(1) { "??:??" }
+                .substring(0, 5)
             val endTime = if (session.has("end_time")) {
-                session.getString("end_time").split(" ").getOrElse(1) { "??:??" }.substring(0, 5)
+                session.getString("end_time")
+                    .split("T").getOrElse(1) { "??:??" }
+                    .substring(0, 5)
             } else {
                 "Still Running"
             }
             val durationSec = session.optDouble("duration_seconds", 0.0)
             val durationText = if (durationSec >= 60) "${(durationSec / 60).toInt()} min" else "${durationSec.toInt()} sec"
             val iconUrl = session.optString("icon_url", "")
-            val text = "$appName ($windowName)\n⏳ $durationText | ⏰ $startTime - $endTime"
+            val text = "$windowName\n⏳ $durationText | ⏰ $startTime - $endTime"
             sessionList.add(Session(text, iconUrl))
         }
         sessionList.reversed()
@@ -270,3 +276,4 @@ suspend fun fetchSessionList(ip: String): List<Session> = withContext(Dispatcher
         listOf(Session("Error parsing session data: ${e.message}", ""))
     }
 }
+
