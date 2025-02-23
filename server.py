@@ -89,26 +89,30 @@ def convert_hicon_to_base64(hicon):
     bmpstr = hbmp.GetBitmapBits(True)
     img = Image.frombuffer('RGB', (bmpinfo['bmWidth'], bmpinfo['bmHeight']), bmpstr, 'raw', 'BGRX', 0, 1)
     
-    # Tee kuvasta RGBA ja muuta musta väri läpinäkyväksi
+    # Muunna kuva RGBA-muotoon
     img = img.convert("RGBA")
-    data = img.getdata()
+    datas = img.getdata()
     new_data = []
-    for item in data:
-        if item[:3] == (0, 0, 0):  # Jos pikseli on musta
-            new_data.append((0, 0, 0, 0))  # Asetetaan läpinäkyväksi
+    threshold = 30  # Kynnysarvo, jolla määritetään mikä on "lähes musta"
+    for item in datas:
+        if item[0] < threshold and item[1] < threshold and item[2] < threshold:
+            # Aseta läpinäkyväksi
+            new_data.append((0, 0, 0, 0))
         else:
             new_data.append(item)
     img.putdata(new_data)
     
-    # Pehmennetään reunoja ja poistetaan mustan jäämät
-    img = img.filter(ImageFilter.GaussianBlur(1))
-    enhancer = ImageEnhance.Brightness(img)
-    img = enhancer.enhance(1.2)  # Kirkastetaan hieman estämään mustien reunojen jäämistä
+    # Luo erillinen alfa-maski ja pehmennä sitä
+    alpha = img.split()[3]
+    alpha = alpha.filter(ImageFilter.GaussianBlur(radius=1.0))
+    img.putalpha(alpha)
+
     
     output = io.BytesIO()
     img.save(output, format="PNG")
     png_data = output.getvalue()
     return base64.b64encode(png_data).decode("utf-8")
+
 
 
 
