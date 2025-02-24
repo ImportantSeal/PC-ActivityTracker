@@ -8,13 +8,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
+import androidx.compose.ui.graphics.asImageBitmap
 import kotlinx.coroutines.*
 import okhttp3.*
 import org.json.JSONArray
@@ -22,15 +22,13 @@ import org.json.JSONObject
 import java.io.IOException
 import java.net.DatagramPacket
 import java.net.DatagramSocket
-import java.net.InetSocketAddress
 import java.net.SocketTimeoutException
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Base64
-import androidx.compose.ui.graphics.asImageBitmap
 
 data class Session(val text: String, val iconUrl: String)
-data class ActiveSession(val text: String, val iconUrl: String)
+data class ActiveSession(val onlineStatus: String, val details: String, val iconUrl: String)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -44,7 +42,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainScreen() {
     var pcIp by remember { mutableStateOf("Searching for PC...") }
-    var activeSession by remember { mutableStateOf(ActiveSession("Waiting for PC...", "")) }
+    var activeSession by remember { mutableStateOf(ActiveSession("Waiting...", "", "")) }
     var sessionList by remember { mutableStateOf<List<Session>>(emptyList()) }
     val coroutineScope = rememberCoroutineScope()
     val ipRegex = Regex("""\d+\.\d+\.\d+\.\d+""")
@@ -59,7 +57,7 @@ fun MainScreen() {
         }
     }
 
-    // Automaattinen statuspäivitys vain, jos pcIp on kelvollinen
+    // Automaattinen statuspäivitys
     LaunchedEffect(pcIp) {
         if (ipRegex.matches(pcIp)) {
             while (true) {
@@ -71,7 +69,7 @@ fun MainScreen() {
         }
     }
 
-    // Automaattinen sessiolistan päivitys vain, jos pcIp on kelvollinen
+    // Automaattinen sessiolistan päivitys
     LaunchedEffect(pcIp) {
         if (ipRegex.matches(pcIp)) {
             while (true) {
@@ -83,60 +81,99 @@ fun MainScreen() {
         }
     }
 
-    Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        verticalArrangement = Arrangement.Top,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text("Detected PC IP: $pcIp")
+    // UI
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        // Yläosa: PC online status ja IP-osoite
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = activeSession.onlineStatus,
+                style = MaterialTheme.typography.headlineSmall
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Detected PC IP: $pcIp",
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Näytetään aktiivinen sessio kuvakkeella
+        // Current Session -osio
+        Text(
+            text = "Current Session",
+            style = MaterialTheme.typography.titleMedium
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    val bitmap = decodeBase64Image(activeSession.iconUrl)
+                    if (bitmap != null) {
+                        Image(
+                            bitmap = bitmap.asImageBitmap(),
+                            contentDescription = "App Icon",
+                            modifier = Modifier.size(40.dp)
+                        )
+                    } else {
+                        Text("❌")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = activeSession.details.ifEmpty { "No active session" })
+                }
+                IconButton(onClick = {
+                    coroutineScope.launch {
+                        if (ipRegex.matches(pcIp)) {
+                            activeSession = fetchPcStatus(pcIp)
+                        }
+                    }
+                }) {
+                    Icon(
+                        imageVector = Icons.Filled.Refresh,
+                        contentDescription = "Refresh Status"
+                    )
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Usage Log -osio
         Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            val bitmap = decodeBase64Image(activeSession.iconUrl)
-            if (bitmap != null) {
-                Image(
-                    bitmap = bitmap.asImageBitmap(),
-                    contentDescription = "App Icon",
-                    modifier = Modifier.size(40.dp)
+            Text(
+                text = "Usage Log",
+                style = MaterialTheme.typography.titleMedium
+            )
+            IconButton(onClick = {
+                coroutineScope.launch {
+                    if (ipRegex.matches(pcIp)) {
+                        sessionList = fetchSessionList(pcIp)
+                    }
+                }
+            }) {
+                Icon(
+                    imageVector = Icons.Filled.Refresh,
+                    contentDescription = "Refresh Sessions"
                 )
-            } else {
-                Text("❌")
             }
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(activeSession.text)
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(onClick = {
-            coroutineScope.launch {
-                if (ipRegex.matches(pcIp)) {
-                    activeSession = fetchPcStatus(pcIp)
-                }
-            }
-        }) {
-            Text("Refresh Status")
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(onClick = {
-            coroutineScope.launch {
-                if (ipRegex.matches(pcIp)) {
-                    sessionList = fetchSessionList(pcIp)
-                }
-            }
-        }) {
-            Text("Refresh Sessions")
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
         Divider()
+        Spacer(modifier = Modifier.height(8.dp))
 
+        // Sessioiden lista
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
@@ -146,7 +183,7 @@ fun MainScreen() {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(8.dp),
+                        .padding(vertical = 4.dp),
                     elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                 ) {
                     Row(
@@ -206,31 +243,38 @@ suspend fun receivePcIp(): String = withContext(Dispatchers.IO) {
 suspend fun fetchPcStatus(ip: String): ActiveSession = withContext(Dispatchers.IO) {
     val ipRegex = Regex("""\d+\.\d+\.\d+\.\d+""")
     if (!ipRegex.matches(ip))
-        return@withContext ActiveSession("Invalid IP address: $ip", "")
+        return@withContext ActiveSession("Invalid IP address: $ip", "", "")
     val client = OkHttpClient()
     val request = Request.Builder().url("http://$ip:5000/status").build()
     try {
         val response = client.newCall(request).execute()
         if (response.isSuccessful) {
             val json = JSONObject(response.body?.string() ?: "{}")
-            var statusText = "PC Status: ${json.getString("status")}"
+            val serverStatus = json.getString("status")
+            val onlineStatus = if (serverStatus.equals("Online", ignoreCase = true)
+                || serverStatus.equals("PC is online", ignoreCase = true)
+            ) {
+                "PC is online"
+            } else {
+                "PC is offline"
+            }
+            var detailsText = ""
             var iconUrl = ""
             if (json.has("current_session")) {
                 val cs = json.getJSONObject("current_session")
-                val appName = cs.optString("process", "Unknown App")
                 val windowName = cs.optString("window", "Unknown Window")
                 val startTime = cs.optString("start_time", "Unknown Start")
                     .split("T").getOrElse(1) { "??:??" }
                     .substring(0, 5)
+                detailsText = "Currently Active: $windowName since $startTime"
                 iconUrl = cs.optString("icon_url", "")
-                statusText += "\nCurrently Active: $windowName since $startTime"
             }
-            return@withContext ActiveSession(statusText, iconUrl)
+            return@withContext ActiveSession(onlineStatus, detailsText, iconUrl)
         } else {
-            return@withContext ActiveSession("HTTP Error: ${response.code}", "")
+            return@withContext ActiveSession("HTTP Error: ${response.code}", "", "")
         }
     } catch (e: IOException) {
-        return@withContext ActiveSession("Connection failed: ${e.message}", "")
+        return@withContext ActiveSession("Connection failed: ${e.message}", "", "")
     }
 }
 
@@ -251,7 +295,6 @@ suspend fun fetchSessionList(ip: String): List<Session> = withContext(Dispatcher
         val sessionList = mutableListOf<Session>()
         for (i in 0 until jsonArray.length()) {
             val session = jsonArray.getJSONObject(i)
-            val appName = session.optString("process", "Unknown App")
             val windowName = session.optString("window", "Unknown Window")
             val startTime = session.optString("start_time", "Unknown Start")
                 .split("T").getOrElse(1) { "??:??" }
@@ -276,4 +319,3 @@ suspend fun fetchSessionList(ip: String): List<Session> = withContext(Dispatcher
         listOf(Session("Error parsing session data: ${e.message}", ""))
     }
 }
-
