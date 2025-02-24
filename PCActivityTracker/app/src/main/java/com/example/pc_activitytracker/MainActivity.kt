@@ -295,6 +295,10 @@ suspend fun fetchSessionList(ip: String): List<Session> = withContext(Dispatcher
         val sessionList = mutableListOf<Session>()
         for (i in 0 until jsonArray.length()) {
             val session = jsonArray.getJSONObject(i)
+            val durationSec = session.optDouble("duration_seconds", 0.0)
+            // filtteröidään lyhyet sessiot
+            if (durationSec < 10.0) continue
+
             val windowName = session.optString("window", "Unknown Window")
             val startTime = session.optString("start_time", "Unknown Start")
                 .split("T").getOrElse(1) { "??:??" }
@@ -306,7 +310,6 @@ suspend fun fetchSessionList(ip: String): List<Session> = withContext(Dispatcher
             } else {
                 "Still Running"
             }
-            val durationSec = session.optDouble("duration_seconds", 0.0)
             val durationText = if (durationSec >= 60) "${(durationSec / 60).toInt()} min" else "${durationSec.toInt()} sec"
             val iconUrl = session.optString("icon_url", "")
             val text = "$windowName\n⏳ $durationText | ⏰ $startTime - $endTime"
