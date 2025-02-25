@@ -71,7 +71,7 @@ suspend fun fetchPcStatus(ip: String): ActiveSession = withContext(Dispatchers.I
     }
 }
 
-suspend fun fetchSessionList(ip: String): List<Session> = withContext(Dispatchers.IO) {
+suspend fun fetchSessionList(ip: String, minDuration: Float): List<Session> = withContext(Dispatchers.IO) {
     val ipRegex = Regex("""\d+\.\d+\.\d+\.\d+""")
     if (!ipRegex.matches(ip))
         return@withContext listOf(Session("Invalid IP address: $ip", ""))
@@ -89,8 +89,8 @@ suspend fun fetchSessionList(ip: String): List<Session> = withContext(Dispatcher
         for (i in 0 until jsonArray.length()) {
             val session = jsonArray.getJSONObject(i)
             val durationSec = session.optDouble("duration_seconds", 0.0)
-            // Filtteröidään sessiot, jotka kestävät alle 2 sekuntia
-            if (durationSec < 2.0) continue
+            // Suodata sessiot, jotka kestävät alle minSessionDuration sekuntia
+            if (durationSec < minDuration) continue
 
             val windowName = session.optString("window", "Unknown Window")
             val startTime = session.optString("start_time", "Unknown Start")

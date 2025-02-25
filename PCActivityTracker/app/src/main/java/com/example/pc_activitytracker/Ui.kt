@@ -13,6 +13,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
@@ -29,11 +30,12 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun MainScreen(navController: NavController) {
-    var pcIp = remember { mutableStateOf("Searching for PC...") }
+    var pcIp = rememberSaveable { mutableStateOf("Searching for PC...") }
     var activeSession = remember { mutableStateOf(ActiveSession("Waiting...", "", "")) }
     var sessionList = remember { mutableStateOf<List<Session>>(emptyList()) }
     val coroutineScope = rememberCoroutineScope()
     val ipRegex = Regex("""\d+\.\d+\.\d+\.\d+""")
+    var minSessionDuration = rememberSaveable { mutableStateOf(10f) }
 
     // Haetaan PC:n IP kerran
     LaunchedEffect(Unit) {
@@ -58,16 +60,18 @@ fun MainScreen(navController: NavController) {
     }
 
     // Automaattinen sessiolistan päivitys
-    LaunchedEffect(pcIp.value) {
+// Automaattinen sessiolistan päivitys
+    LaunchedEffect(pcIp.value, minSessionDuration.value) {
         if (ipRegex.matches(pcIp.value)) {
             while (true) {
                 coroutineScope.launch {
-                    sessionList.value = fetchSessionList(pcIp.value)
+                    sessionList.value = fetchSessionList(pcIp.value, minSessionDuration.value)
                 }
                 delay(30000)
             }
         }
     }
+
 
     // UI
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
@@ -159,7 +163,7 @@ fun MainScreen(navController: NavController) {
             IconButton(onClick = {
                 coroutineScope.launch {
                     if (ipRegex.matches(pcIp.value)) {
-                        sessionList.value = fetchSessionList(pcIp.value)
+                        sessionList.value = fetchSessionList(pcIp.value, minSessionDuration.value)
                     }
                 }
             }) {
@@ -168,6 +172,7 @@ fun MainScreen(navController: NavController) {
                     contentDescription = "Refresh Sessions"
                 )
             }
+
         }
         Divider()
         Spacer(modifier = Modifier.height(8.dp))
