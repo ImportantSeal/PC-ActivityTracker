@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
@@ -16,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import com.example.pc_activitytracker.models.ActiveSession
 import com.example.pc_activitytracker.models.Session
 import com.example.pc_activitytracker.network.fetchPcStatus
@@ -26,7 +28,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
-fun MainScreen() {
+fun MainScreen(navController: NavController) {
     var pcIp = remember { mutableStateOf("Searching for PC...") }
     var activeSession = remember { mutableStateOf(ActiveSession("Waiting...", "", "")) }
     var sessionList = remember { mutableStateOf<List<Session>>(emptyList()) }
@@ -69,20 +71,33 @@ fun MainScreen() {
 
     // UI
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        // Yläosa: Online status ja IP
-        Column(
+        // Yläosa: Online status, IP ja asetukset-nappi
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(
-                text = activeSession.value.onlineStatus,
-                style = MaterialTheme.typography.headlineSmall
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "Detected PC IP: ${pcIp.value}",
-                style = MaterialTheme.typography.bodySmall
-            )
+            Column(
+                horizontalAlignment = Alignment.Start
+            ) {
+                Text(
+                    text = activeSession.value.onlineStatus,
+                    style = MaterialTheme.typography.headlineSmall
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Detected PC IP: ${pcIp.value}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+            IconButton(
+                onClick = { navController.navigate("settings") }
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Settings,
+                    contentDescription = "Asetukset"
+                )
+            }
         }
         Spacer(modifier = Modifier.height(16.dp))
 
