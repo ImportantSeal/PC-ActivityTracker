@@ -8,10 +8,12 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 
 @Composable
-fun AppNavigation() {
+fun AppNavigation(
+    darkThemeEnabled: Boolean,
+    onDarkThemeToggle: (Boolean) -> Unit
+) {
     val navController = rememberNavController()
     val minSessionDuration = remember { mutableStateOf(10f) }
-    val darkThemeEnabled = remember { mutableStateOf(false) }
 
     NavHost(navController = navController, startDestination = "main") {
         composable("main") {
@@ -19,8 +21,8 @@ fun AppNavigation() {
         }
         composable("settings") {
             SettingsScreen(
-                darkThemeEnabled = darkThemeEnabled.value,
-                onDarkThemeToggle = { darkThemeEnabled.value = it },
+                darkThemeEnabled = darkThemeEnabled,
+                onDarkThemeToggle = onDarkThemeToggle,
                 minSessionDuration = minSessionDuration.value,
                 onMinSessionDurationChange = { minSessionDuration.value = it },
                 onBack = { navController.navigateUp() }

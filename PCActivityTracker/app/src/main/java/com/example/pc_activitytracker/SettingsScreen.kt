@@ -2,8 +2,7 @@ package com.example.pc_activitytracker.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
@@ -20,6 +19,7 @@ fun SettingsScreen(
             .fillMaxSize()
             .padding(16.dp)
     ) {
+        // Takaisin-nappi
         Button(onClick = onBack) {
             Text("Takaisin")
         }
@@ -29,9 +29,10 @@ fun SettingsScreen(
             style = MaterialTheme.typography.headlineSmall
         )
         Spacer(modifier = Modifier.height(16.dp))
+        // Teeman vaihtaminen
         Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
         ) {
             Text("Tumma teema")
             Spacer(modifier = Modifier.width(8.dp))
@@ -41,17 +42,6 @@ fun SettingsScreen(
             )
         }
         Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = "Näytä sessiot, joiden kesto on vähintään: ${minSessionDuration.toInt()} sekuntia",
-            style = MaterialTheme.typography.bodyMedium
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Slider(
-            value = minSessionDuration,
-            onValueChange = onMinSessionDurationChange,
-            valueRange = 0f..60f,
-            steps = 5,
-            modifier = Modifier.fillMaxWidth()
-        )
+
     }
 }
