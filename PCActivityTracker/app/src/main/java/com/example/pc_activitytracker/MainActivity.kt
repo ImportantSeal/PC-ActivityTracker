@@ -25,15 +25,14 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
-        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
-            if (!task.isSuccessful) {
-                Log.w("FCM", "Fetching FCM registration token failed", task.exception)
-                return@addOnCompleteListener
+        FirebaseMessaging.getInstance().subscribeToTopic("pcStatus")
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    Log.d("FCM", "Subscribed to topic 'pcStatus'")
+                } else {
+                    Log.e("FCM", "Failed to subscribe to topic 'pcStatus'")
+                }
             }
-            // Get new FCM registration token
-            val token = task.result
-            Log.d("FCM", "Token: $token")
-        }
     }
 
 }

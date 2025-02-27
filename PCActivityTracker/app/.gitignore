@@ -1,1 +1,4 @@
 /build
+.env
+google-services.json
+PCActivityTracker\app\pcactivitytracker-firebase-adminsdk-fbsvc-b971d2281d.json
