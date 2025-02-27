@@ -10,8 +10,11 @@ import win32ui
 import win32con
 import base64
 import io
+import os
+
 from PIL import Image, ImageFilter, ImageEnhance
 import sqlite3
+from dotenv import load_dotenv
 
 app = Flask(__name__)
 
@@ -61,7 +64,6 @@ def get_status():
 
 @app.route('/sessions', methods=['GET'])
 def get_sessions():
-    # Haetaan sessiotietokannasta uusimmasta alkaen
     cursor = db_conn.cursor()
     cursor.execute("SELECT process, window, start_time, end_time, duration_seconds, icon_url FROM sessions ORDER BY id DESC")
     rows = cursor.fetchall()
@@ -116,19 +118,16 @@ def convert_hicon_to_base64(hicon):
     bmpstr = hbmp.GetBitmapBits(True)
     img = Image.frombuffer('RGB', (bmpinfo['bmWidth'], bmpinfo['bmHeight']), bmpstr, 'raw', 'BGRX', 0, 1)
 
-    # Muunna kuva RGBA-muotoon ja käsittele läpinäkyvyys
     img = img.convert("RGBA")
     datas = img.getdata()
     new_data = []
-    threshold = 30  # Kynnysarvo "lähes mustalle"
+    threshold = 30
     for item in datas:
         if item[0] < threshold and item[1] < threshold and item[2] < threshold:
             new_data.append((0, 0, 0, 0))
         else:
             new_data.append(item)
     img.putdata(new_data)
-
-    # Pehmennä alfa-kanavaa
     alpha = img.split()[3]
     alpha = alpha.filter(ImageFilter.GaussianBlur(radius=1.0))
     img.putalpha(alpha)
@@ -164,24 +163,25 @@ def monitor_active_window():
             time.sleep(1)
             continue
         if last_hwnd != hwnd:
-            # Jos on ollut aktiivinen sessio, lopeta se ja tallenna tietokantaan
             if active_session is not None:
                 active_session["end_time"] = now.isoformat()
                 start_time = datetime.datetime.fromisoformat(active_session["start_time"])
                 duration = (now - start_time).total_seconds()
                 active_session["duration_seconds"] = duration
-                # Tallenna sessio tietokantaan
                 db_cursor.execute("""
                     INSERT INTO sessions (process, window, start_time, end_time, duration_seconds, icon_url)
                     VALUES (?, ?, ?, ?, ?, ?)
-                """, (active_session["process"], active_session["window"],
-                      active_session["start_time"], active_session["end_time"],
-                      active_session["duration_seconds"], active_session.get("icon_url", "")))
+                """, (
+                    active_session["process"],
+                    active_session["window"],
+                    active_session["start_time"],
+                    active_session["end_time"],
+                    active_session["duration_seconds"],
+                    active_session.get("icon_url", "")
+                ))
                 db_conn.commit()
                 print("Session ended and stored:", active_session)
                 active_session = None
-
-            # Aloitetaan uusi sessio
             icon_base64 = get_icon_for_process(process_exe)
             active_session = {
                 "process": process_name,
@@ -196,7 +196,15 @@ def monitor_active_window():
         time.sleep(1)
 
 if __name__ == '__main__':
-    # Käynnistä taustasäikeet
+    load_dotenv() 
+    from send_notification import send_fcm_notification_v1
+    
+    service_account_file = os.getenv("SERVICE_ACCOUNT_FILE")
+    project_id = os.getenv("PROJECT_ID")
+    device_token = os.getenv("DEVICE_TOKEN")
+    
+    send_fcm_notification_v1(service_account_file, project_id, device_token)
+    
     broadcast_thread = threading.Thread(target=broadcast_ip, daemon=True)
     broadcast_thread.start()
     active_window_thread = threading.Thread(target=monitor_active_window, daemon=True)
