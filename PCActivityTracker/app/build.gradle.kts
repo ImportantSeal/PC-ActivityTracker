@@ -1,6 +1,8 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    id("com.google.gms.google-services") version "4.4.2" apply false
+
 }
 
 android {
@@ -83,6 +85,9 @@ dependencies {
 
     implementation(libs.coil.compose)
 
+    implementation (libs.firebase.messaging)
 
 
 }
+
+apply(plugin = "com.google.gms.google-services")
