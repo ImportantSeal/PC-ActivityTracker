@@ -13,28 +13,12 @@ import io
 import os
 
 from PIL import Image, ImageFilter, ImageEnhance
-import sqlite3
 from dotenv import load_dotenv
 
 app = Flask(__name__)
 
-# Alustetaan SQLite-tietokanta ja luodaan sessions-taulu, jos sitä ei ole
-db_conn = sqlite3.connect("sessions.db", check_same_thread=False)
-db_cursor = db_conn.cursor()
-db_cursor.execute("""
-CREATE TABLE IF NOT EXISTS sessions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    process TEXT,
-    window TEXT,
-    start_time TEXT,
-    end_time TEXT,
-    duration_seconds REAL,
-    icon_url TEXT
-)
-""")
-db_conn.commit()
-
-# In-memory sessioiden hallinta (käytetään aktiivisen session seurantaan)
+# In-memory sessioiden tallennus
+sessions_log = []
 active_session = None
 
 def get_local_ip():
@@ -46,6 +30,7 @@ def get_local_ip():
     except Exception as e:
         print("Error getting local IP:", e)
         return "127.0.0.1"
+
 
 @app.route('/status', methods=['GET'])
 def get_status():
@@ -64,20 +49,8 @@ def get_status():
 
 @app.route('/sessions', methods=['GET'])
 def get_sessions():
-    cursor = db_conn.cursor()
-    cursor.execute("SELECT process, window, start_time, end_time, duration_seconds, icon_url FROM sessions ORDER BY id DESC")
-    rows = cursor.fetchall()
-    sessions_list = []
-    for row in rows:
-        sessions_list.append({
-            "process": row[0],
-            "window": row[1],
-            "start_time": row[2],
-            "end_time": row[3],
-            "duration_seconds": row[4],
-            "icon_url": row[5]
-        })
-    return jsonify(sessions_list)
+    # Palautetaan sessiot käänteisessä järjestyksessä (uusin ensin)
+    return jsonify(sessions_log[::-1])
 
 def broadcast_ip():
     udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -86,11 +59,13 @@ def broadcast_ip():
         try:
             ip_address = get_local_ip()
             message = f"PC_IP:{ip_address}"
-            udp_socket.sendto(message.encode(), ('255.255.255.255', 5001))
+            udp_socket.sendto(message.encode(), ('192.168.1.255', 5001))
             print(f"Broadcasting: {message}")
         except Exception as e:
             print(f"Broadcast error: {e}")
         time.sleep(5)
+
+
 
 def get_active_window_info():
     hwnd = win32gui.GetForegroundWindow()
@@ -168,18 +143,7 @@ def monitor_active_window():
                 start_time = datetime.datetime.fromisoformat(active_session["start_time"])
                 duration = (now - start_time).total_seconds()
                 active_session["duration_seconds"] = duration
-                db_cursor.execute("""
-                    INSERT INTO sessions (process, window, start_time, end_time, duration_seconds, icon_url)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                """, (
-                    active_session["process"],
-                    active_session["window"],
-                    active_session["start_time"],
-                    active_session["end_time"],
-                    active_session["duration_seconds"],
-                    active_session.get("icon_url", "")
-                ))
-                db_conn.commit()
+                sessions_log.append(active_session)
                 print("Session ended and stored:", active_session)
                 active_session = None
             icon_base64 = get_icon_for_process(process_exe)
