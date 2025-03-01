@@ -16,7 +16,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            var darkThemeEnabled by rememberSaveable { mutableStateOf(false) }
+            var darkThemeEnabled by rememberSaveable { mutableStateOf(true) }
 
             PcActivityTrackerTheme(darkTheme = darkThemeEnabled) {
                 AppNavigation(
