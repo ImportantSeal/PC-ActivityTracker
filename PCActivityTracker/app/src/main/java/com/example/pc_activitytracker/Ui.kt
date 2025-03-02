@@ -16,6 +16,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -36,7 +37,12 @@ fun MainScreen(navController: NavController) {
     val coroutineScope = rememberCoroutineScope()
     val ipRegex = Regex("""\d+\.\d+\.\d+\.\d+""")
     var minSessionDuration = rememberSaveable { mutableStateOf(10f) }
+    val CustomDarkColor = Color(0xFF393E42)
 
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ){
     // Haetaan PC:n IP kerran
     LaunchedEffect(Unit) {
         coroutineScope.launch {
@@ -109,11 +115,14 @@ fun MainScreen(navController: NavController) {
         Text(
             text = "Current Session",
             style = MaterialTheme.typography.titleMedium
+
         )
         Spacer(modifier = Modifier.height(8.dp))
         Card(
             modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+            colors = CardDefaults.cardColors(containerColor = CustomDarkColor)
+
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(12.dp),
@@ -132,7 +141,8 @@ fun MainScreen(navController: NavController) {
                         Text("❌")
                     }
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = activeSession.value.details.ifEmpty { "No active session" })
+                    Text(text = activeSession.value.details.ifEmpty { "No active session" },
+                    color = Color.White)
                 }
                 IconButton(onClick = {
                     coroutineScope.launch {
@@ -183,8 +193,11 @@ fun MainScreen(navController: NavController) {
         ) {
             items(sessionList.value) { session ->
                 Card(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                    colors = CardDefaults.cardColors(containerColor = CustomDarkColor)
                 ) {
                     Row(
                         modifier = Modifier.padding(12.dp),
@@ -201,10 +214,12 @@ fun MainScreen(navController: NavController) {
                             Text("❌")
                         }
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(session.text)
+                        Text(text=(session.text),
+                        color= Color.White)
                     }
                 }
             }
         }
+    }
     }
 }
