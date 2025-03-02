@@ -14,6 +14,7 @@ import com.google.firebase.messaging.FirebaseMessaging
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+
         super.onCreate(savedInstanceState)
         setContent {
             var darkThemeEnabled by rememberSaveable { mutableStateOf(true) }

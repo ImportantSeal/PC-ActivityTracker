@@ -14,6 +14,10 @@ fun SettingsScreen(
     onMinSessionDurationChange: (Float) -> Unit,
     onBack: () -> Unit
 ) {
+    Surface (
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ){
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -42,6 +46,6 @@ fun SettingsScreen(
             )
         }
         Spacer(modifier = Modifier.height(16.dp))
-
+    }
     }
 }
