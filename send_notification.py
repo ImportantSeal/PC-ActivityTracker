@@ -5,7 +5,6 @@ from google.oauth2 import service_account
 import google.auth.transport.requests
 from dotenv import load_dotenv
 
-# Ladataan .env-tiedoston muuttujat
 load_dotenv()
 
 SCOPES = ["https://www.googleapis.com/auth/firebase.messaging"]
@@ -32,7 +31,7 @@ def send_fcm_notification_v1(service_account_file, project_id, device_token):
             "token": device_token,
             "notification": {
                 "title": "Server Started",
-                "body": "PC Activity Tracker server is now online!"
+                "body": "PC is Online!"
             }
         }
     }

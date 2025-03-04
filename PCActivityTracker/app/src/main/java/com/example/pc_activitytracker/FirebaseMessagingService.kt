@@ -13,19 +13,15 @@ import com.google.firebase.messaging.RemoteMessage
 class FirebaseMessagingService : FirebaseMessagingService() {
 
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
-        // Käsittele saapuva ilmoitus
+        // käsittele saapuva ilmoitus
         remoteMessage.notification?.let {
             sendNotification(it.title ?: "Ilmoitus", it.body ?: "")
         }
     }
-
     override fun onNewToken(token: String) {
         super.onNewToken(token)
         Log.d("FCM", "New token: $token")
     }
-
-
-
     private fun sendNotification(title: String, messageBody: String) {
         val channelId = "default_channel_id"
         val defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
